@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Sostituzioni - I.O.C. E. Corbino</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --border: #cbd5e1;
+            --text: #0f172a;
+            --success: #16a34a;
+            --warning: #d97706;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
+        .container { max-width: 1050px; margin: 0 auto; flex: 1; width: 100%; position: relative; }
+        h1, h2, h3 { color: #0f172a; margin-bottom: 10px; }
+        
+        /* Navigazione Schede con colori evidenti */
+        .tabs { display: flex; gap: 6px; margin-bottom: 0; flex-wrap: wrap; }
+        .tab-btn { 
+            padding: 12px 18px; 
+            border: 2px solid transparent; 
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            font-size: 0.95rem; 
+            font-weight: 700; 
+            color: #ffffff;
+            cursor: pointer; 
+            transition: all 0.15s ease;
+            opacity: 0.78;
+        }
+        .tab-btn:hover { opacity: 0.95; }
+        .tab-btn.active { 
+            opacity: 1; 
+            padding-bottom: 14px;
+            margin-bottom: -2px; 
+            z-index: 2;
+            box-shadow: 0 -3px 8px rgba(0,0,0,0.12);
+        }
+
+        /* Colori Pulsanti Tab */
+        .tab-btn[data-tab="sub"] { background-color: #2563eb; border-color: #1d4ed8; }
+        .tab-btn[data-tab="sub"].active { background-color: #1d4ed8; }
+
+        .tab-btn[data-tab="import"] { background-color: #16a34a; border-color: #15803d; }
+        .tab-btn[data-tab="import"].active { background-color: #15803d; }
+
+        .tab-btn[data-tab="report"] { background-color: #9333ea; border-color: #7e22ce; }
+        .tab-btn[data-tab="report"].active { background-color: #7e22ce; }
+
+        .tab-btn[data-tab="archive"] { background-color: #d97706; border-color: #b45309; }
+        .tab-btn[data-tab="archive"].active { background-color: #b45309; }
+
+        .tab-btn[data-tab="short-leave"] { background-color: #e11d48; border-color: #be123c; }
+        .tab-btn[data-tab="short-leave"].active { background-color: #be123c; }
+
+        /* Contenitori Schede con sfondo e bordo ben marcati */
+        .tab-content { 
+            display: none; 
+            padding: 22px; 
+            border-radius: 0 10px 10px 10px; 
+            border: 3px solid var(--border);
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+        .tab-content.active { display: block; }
+
+        #tab-sub { background-color: #bfdbfe; border-color: #1d4ed8; }
+        #tab-import { background-color: #bbf7d0; border-color: #15803d; }
+        #tab-report { background-color: #e9d5ff; border-color: #7e22ce; }
+        #tab-archive { background-color: #fde68a; border-color: #b45309; }
+        #tab-short-leave { background-color: #fecdd3; border-color: #be123c; }
+
+        /* Card interne con bordo colorato coordinato */
+        .card { background: var(--card); border: 2px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+        .card:last-child { margin-bottom: 0; }
+        #tab-sub .card { border-color: #3b82f6; }
+        #tab-import .card { border-color: #22c55e; }
+        #tab-report .card { border-color: #a855f7; }
+        #tab-archive .card { border-color: #f59e0b; }
+        #tab-short-leave .card { border-color: #f43f5e; }
+
+        .card-highlight { background: #ffffff; border: 2px dashed #16a34a; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+        
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        @media (max-width: 768px) { .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+        
+        label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem; }
+        select, input[type="text"], input[type="password"], input[type="date"], input[type="file"] { width: 100%; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 1rem; background: #fff; }
+        
+        .checkbox-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
+        .checkbox-item { display: flex; align-items: center; gap: 5px; background: #f1f5f9; padding: 6px 12px; border-radius: 4px; border: 1px solid #94a3b8; }
+
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+        .btn:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: #15803d; }
+        .btn-warning { background: var(--warning); color: white; padding: 6px 12px; font-size: 0.85rem; }
+        .btn-warning:hover { background: #b45309; }
+        .btn-danger { background: #dc2626; padding: 6px 12px; font-size: 0.85rem; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-secondary { background: #475569; }
+        .btn-secondary:hover { background: #334155; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; }
+        th, td { padding: 10px; border: 1px solid #cbd5e1; text-align: left; }
+        th { background: #f1f5f9; font-weight: 600; }
+        
+        .empty-text { color: #64748b; font-style: italic; text-align: center; padding: 20px; }
+
+        .print-preview-box {
+            border: 2px dashed #64748b;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .print-preview-box table th,
+        .print-preview-box table td,
+        .report-table th,
+        .report-table td {
+            font-size: 10pt;
+            padding: 5px 8px;
+        }
+
+        .matrix-table th, .matrix-table td {
+            text-align: center;
+            vertical-align: middle;
+            font-size: 9pt;
+        }
+        .matrix-table th:first-child, .matrix-table td:first-child {
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .footer-signature {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #475569;
+            margin-top: 20px;
+            padding-top: 6px;
+            border-top: 1px dashed #cbd5e1;
+            font-style: italic;
+        }
+
+        /* Modal di Login Password */
+        #login-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .login-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 380px;
+            text-align: center;
+        }
+        .login-card h2 { margin-bottom: 8px; font-size: 1.3rem; }
+        .login-card p { font-size: 0.9rem; color: #64748b; margin-bottom: 20px; }
+        .login-card input { margin-bottom: 15px; text-align: center; font-size: 1.1rem; }
+        #login-error { color: #dc2626; font-size: 0.85rem; margin-top: 10px; display: none; font-weight: 600; }
+
+        @media print {
+            body { 
+                background: white !important; 
+                color: black !important; 
+                padding: 0 !important; 
+                margin: 0 !important;
+            }
+            .tabs, .card-form, .btn, .no-print, #login-overlay { display: none !important; }
+            .tab-content { border: none !important; background: white !important; padding: 0 !important; box-shadow: none !important; }
+            .card, .card-highlight { border: none !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 0 !important; background: white !important; }
+            .container { max-width: 100% !important; margin: 0 !important; width: 100% !important; }
+            
+            .print-header { 
+                display: block !important; 
+                margin-bottom: 6px !important; 
+                border-bottom: 1.5px solid #000; 
+                padding-bottom: 4px !important; 
+                text-align: center; 
+            }
+            .print-header h2 { font-size: 1rem !important; margin-bottom: 1px !important; }
+            .print-header h3 { font-size: 0.85rem !important; font-weight: normal; margin-bottom: 2px !important; }
+            .print-header p, #preview-absent-header-line, #print-absent-header-line { font-size: 0.8rem !important; margin-top: 2px !important; }
+
+            table { 
+                border: 1px solid #000 !important; 
+                width: 100% !important; 
+                margin-top: 4px !important;
+                margin-bottom: 30px !important; 
+            }
+            
+            tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+
+            th, td { 
+                border: 1px solid #000 !important; 
+                padding: 3px 4px !important; 
+                font-size: 10pt !important;
+                line-height: 1.30 !important;
+            }
+
+            .report-table th:nth-child(1), .report-table td:nth-child(1) { width: 6% !important; text-align: center !important; }
+            .report-table th:nth-child(2), .report-table td:nth-child(2) { width: 22% !important; }
+            .report-table th:nth-child(3), .report-table td:nth-child(3) { width: 20% !important; }
+            .report-table th:nth-child(4), .report-table td:nth-child(4) { width: 34% !important; }
+            .report-table th:nth-child(5), .report-table td:nth-child(5) { width: 18% !important; }
+            
+            th { 
+                background-color: #f2f2f2 !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            
+            .print-preview-box { border: none !important; padding: 0 !important; margin: 0 !important; }
+            
+            .footer-signature {
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                font-size: 0.75rem !important; 
+                color: #000; 
+                font-style: italic;
+                padding: 2px 0 !important; 
+                background: white; 
+                border-top: 1px solid #000;
+            }
+
+            body.print-layout-vertical {
+                @page { size: A4 portrait; margin: 0.5cm 0.6cm 1cm 0.6cm; }
+            }
+            body.print-layout-matrix {
+                @page { size: A4 landscape; margin: 0.5cm 0.6cm 1cm 0.6cm; }
+            }
+        }
+        .print-header { display: none; }
+        
+        #sync-status { font-size: 0.85rem; padding: 4px 10px; border-radius: 4px; background: #e2e8f0; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    </style>
+</head>
+<body class="print-layout-vertical" id="page-body">
+
+<!-- SCHERMATA DI LOGIN PASSWORD -->
+<div id="login-overlay">
+    <div class="login-card">
+        <h2>🔒 Accesso Riservato</h2>
+        <p>I.O.C. "E. Corbino" - Gestione Sostituzioni</p>
+        <input type="password" id="app-password-input" placeholder="Inserisci Password" onkeydown="if(event.key==='Enter') checkPassword();">
+        <button class="btn btn-success" style="width: 100%; justify-content: center;" onclick="checkPassword()">Accedi</button>
+        <div id="login-error">Password errata. Riprova.</div>
+    </div>
+</div>
+
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+        <h1 class="no-print" style="margin:0;">Gestione Sostituzioni Docenti</h1>
+        <div id="sync-status" class="no-print">🔒 In attesa di autenticazione</div>
+    </div>
+
+    <div class="tabs no-print">
+        <button class="tab-btn active" data-tab="sub" onclick="switchTab('sub')">1. Assegna Sostituzioni</button>
+        <button class="tab-btn" data-tab="import" onclick="switchTab('import')">2. Disponibilità Docenti</button>
+        <button class="tab-btn" data-tab="report" onclick="switchTab('report')">3. Report e Stampa</button>
+        <button class="tab-btn" data-tab="archive" onclick="switchTab('archive')">4. Archivio Storico</button>
+        <button class="tab-btn" data-tab="short-leave" onclick="switchTab('short-leave')">5. Permessi Brevi</button>
+    </div>
+
+    <!-- TAB 1: ASSEGNAZIONE SOSTITUZIONI -->
+    <div id="tab-sub" class="tab-content active">
+        <div class="card card-form">
+            <h2>Seleziona Data, Giorno, Ora, Docente e Classe</h2>
+            <div class="grid-4" style="margin-top:15px;">
+                <div>
+                    <label for="shared-date">Data della Sostituzione</label>
+                    <input type="date" id="shared-date" onchange="syncDates(this.value); updatePreviewReport();">
+                </div>
+                <div>
+                    <label for="sel-day">Giorno della settimana</label>
+                    <select id="sel-day" onchange="currentLoadedArchiveLogs = null; updateHours(); updateAvailable(); updatePreviewReport();">
+                        <option value="Lunedì">Lunedì (5 ore)</option>
+                        <option value="Martedì" selected>Martedì (6 ore)</option>
+                        <option value="Mercoledì">Mercoledì (5 ore)</option>
+                        <option value="Giovedì">Giovedì (5 ore)</option>
+                        <option value="Venerdì">Venerdì (6 ore)</option>
+                        <option value="Sabato">Sabato (5 ore)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="sel-hour">Ora di lezione</label>
+                    <select id="sel-hour" onchange="updateAvailable()"></select>
+                </div>
+                <div>
+                    <label for="absent-teacher">Docente Assente</label>
+                    <select id="absent-teacher">
+                        <option value="">-- Seleziona Docente --</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 15px;" class="grid-4">
+                <div>
+                    <label for="absent-class">Classe (Indirizzo e Classe)</label>
+                    <select id="absent-class">
+                        <option value="">-- Seleziona Classe --</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <label class="checkbox-item" style="cursor: pointer; width: 100%; height: 42px; display: flex; align-items: center; justify-content: flex-start; padding: 0 12px;">
+                        <input type="checkbox" id="short-leave-checkbox" style="width: 18px; height: 18px; margin-right: 8px;"> <strong>Permesso Breve</strong>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <label for="manual-substitute" style="color: var(--primary-dark); font-size: 1rem; margin-bottom: 5px;">Oppure assegna a un docente non in archivio:</label>
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <input type="text" id="manual-substitute" placeholder="Es. Prof. Bianchi Luigi">
+                <button class="btn btn-success" onclick="assignManualSub()">Assegna Sostituzione Manuale</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Docenti a Disposizione Disponibili</h3>
+            <div id="avail-container"></div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;" class="no-print">
+                <h3>📄 Anteprima Prospetto di Stampa</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <label for="preview-layout-select" style="margin:0; font-size:0.85rem;">Formato:</label>
+                    <select id="preview-layout-select" onchange="changePrintLayout(this.value)" style="padding: 6px; font-size: 0.9rem;">
+                        <option value="vertical">Versione 1 (Verticale)</option>
+                        <option value="matrix">Versione 2 (Matrice Orizzontale)</option>
+                    </select>
+                    <button class="btn btn-success" onclick="window.print()">🖨️ Stampa</button>
+                </div>
+            </div>
+
+            <div class="print-preview-box">
+                <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 12px;" class="print-header">
+                    <h2 style="font-size: 1.1rem; margin-bottom: 2px;">I.O.C. "E. Corbino" Contursi Terme (SA)</h2>
+                    <h3 style="font-size: 0.95rem; font-weight: normal; margin-bottom: 4px;">PROSPETTO GIORNALIERO SOSTITUZIONE DOCENTI ASSENTI</h3>
+                    <p style="font-size: 0.85rem;"><strong>Data:</strong> <span id="preview-day-label">Martedì</span></p>
+                    <div id="preview-absent-header-line" style="font-size: 0.85rem; margin-top: 4px;"></div>
+                </div>
+
+                <div id="preview-container-dynamic"></div>
+
+                <div class="footer-signature">
+                    <span>Pagina 1 di 1</span>
+                    <span>Vivone M.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: INSERIMENTO MANUALE ED EXCEL -->
+    <div id="tab-import" class="tab-content">
+        <div class="card-highlight no-print">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3>Elenchi Docenti e Classi da Google Fogli</h3>
+                <button class="btn btn-danger" onclick="clearTab1Lists()" style="padding: 4px 10px; font-size: 0.8rem;">Svuota Elenchi Caricati</button>
+            </div>
+            <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px;">
+                Gli elenchi vengono caricati automaticamente dai fogli <strong>Docenti</strong> e <strong>Classi</strong> del Google Foglio collegato. I pulsanti di importazione sottostanti restano disponibili solo come caricamento locale di emergenza.
+            </p>
+            <div class="grid-2">
+                <div>
+                    <label for="tab1-file-teachers">Elenco Docenti (.xlsx, .csv)</label>
+                    <input type="file" id="tab1-file-teachers" accept=".xlsx, .xls, .csv" onchange="importTab1Teachers(event)">
+                </div>
+                <div>
+                    <label for="tab1-file-classes">Elenco Classi - Indirizzo e Classe (.xlsx, .csv)</label>
+                    <input type="file" id="tab1-file-classes" accept=".xlsx, .xls, .csv" onchange="importTab1Classes(event)">
+                </div>
+            </div>
+            <div id="tab1-import-status" style="margin-top: 10px; font-size: 0.85rem; color: var(--success); font-weight: 600;"></div>
+        </div>
+
+        <div class="card-highlight no-print">
+            <h3>Inserimento Manuale Docente Assente / Classe</h3>
+            <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px;">
+                Puoi aggiungere un nuovo docente o una nuova classe direttamente negli elenchi permanenti.
+            </p>
+            <div class="grid-2">
+                <div>
+                    <label for="manual-absent-name">Nome Docente Assente (Manuale)</label>
+                    <input type="text" id="manual-absent-name" placeholder="Es. Prof. Verdi Giovanni">
+                    <button class="btn btn-success" style="margin-top: 8px; font-size: 0.85rem; padding: 6px 12px;" onclick="addManualTeacherToList()">+ Aggiungi Docente all'Elenco</button>
+                </div>
+                <div>
+                    <label for="manual-class-name">Classe (Manuale)</label>
+                    <input type="text" id="manual-class-name" placeholder="Es. Amministrazione - 3A">
+                    <button class="btn btn-success" style="margin-top: 8px; font-size: 0.85rem; padding: 6px 12px;" onclick="addManualClassToList()">+ Aggiungi Classe all'Elenco</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-form">
+            <h2 id="form-title">Inserisci Docente a Disposizione (Manuale)</h2>
+            <input type="hidden" id="edit-index" value="-1">
+            <div class="grid-3" style="margin-top: 15px;">
+                <div>
+                    <label for="manual-name">Nome Docente</label>
+                    <input type="text" id="manual-name" placeholder="Es. Prof. Rossi Mario">
+                </div>
+                <div>
+                    <label for="manual-role" class="no-print">Tipologia / Ruolo</label>
+                    <select id="manual-role" class="no-print">
+                        <option value="Disp.">Disp.</option>
+                        <option value="Pot.">Pot.</option>
+                        <option value="Cps">Cps</option>
+                        <option value="Sost">Sost</option>
+                        <option value="Rec">Rec</option>
+                        <option value="Itp">Itp</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="manual-day">Giorno</label>
+                    <select id="manual-day" onchange="updateManualHourCheckboxes()">
+                        <option value="Lunedì">Lunedì</option>
+                        <option value="Martedì">Martedì</option>
+                        <option value="Mercoledì">Mercoledì</option>
+                        <option value="Giovedì">Giovedì</option>
+                        <option value="Venerdì">Venerdì</option>
+                        <option value="Sabato">Sabato</option>
+                    </select>
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <label>Seleziona Ore a Disposizione:</label>
+                    <div class="checkbox-group" id="manual-hours-container"></div>
+                </div>
+            </div>
+            <div style="margin-top:15px; display:flex; gap:10px;">
+                <button class="btn btn-success" id="save-btn" onclick="addManualAvailability()">+ Aggiungi Disponibilità</button>
+                <button class="btn btn-secondary" id="cancel-edit-btn" style="display:none;" onclick="resetForm()">Annulla Modifica</button>
+            </div>
+        </div>
+
+        <div class="card card-form">
+            <h2>Oppure Carica da File Excel (.xlsx / .csv)</h2>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">
+                Colonne richieste nel file: <strong>Nome</strong>, <strong>Giorno</strong>, <strong>Ora</strong>.
+            </p>
+            <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" onchange="importExcel(event)">
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Disponibilità Caricate (<span id="total-avail-count">0</span>)</h3>
+                <button class="btn btn-danger" onclick="clearAllAvailability()">Svuota Tutto</button>
+            </div>
+            <div id="loaded-teachers-list"></div>
+        </div>
+    </div>
+
+    <!-- TAB 3: REPORT GIORNALIERO E STAMPA -->
+    <div id="tab-report" class="tab-content">
+        <div class="card">
+            <div class="no-print grid-3" style="margin-bottom:15px; align-items:end;">
+                <div>
+                    <label for="report-date">Data della Sostituzione:</label>
+                    <input type="date" id="report-date" onchange="syncDates(this.value); renderReport();">
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label for="report-layout-select" style="margin:0; font-size:0.85rem;">Formato:</label>
+                    <select id="report-layout-select" onchange="changePrintLayout(this.value)" style="padding: 6px; font-size: 0.9rem;">
+                        <option value="vertical">Versione 1 (Verticale)</option>
+                        <option value="matrix">Versione 2 (Matrice Orizzontale)</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn btn-secondary" onclick="archiveCurrentReport()">📁 Salva</button>
+                    <button class="btn btn-success" onclick="window.print()">🖨️ Stampa</button>
+                </div>
+            </div>
+
+            <div class="print-header">
+                <h2>I.O.C. "E. Corbino" Contursi Terme (SA)</h2>
+                <h3>PROSPETTO GIORNALIERO SOSTITUZIONE DOCENTI ASSENTI</h3>
+                <p><strong>Data:</strong> <span id="print-day-date-label"></span></p>
+                <div id="print-absent-header-line" style="font-size: 0.85rem; margin-top: 4px;"></div>
+            </div>
+
+            <div id="report-container-dynamic"></div>
+
+            <div class="footer-signature">
+                <span>Pagina 1 di 1</span>
+                <span>Vivone M.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: ARCHIVIO STORICO -->
+    <div id="tab-archive" class="tab-content">
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
+                <h2>Archivio Storico Sostituzioni</h2>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-success" onclick="exportArchiveToExcel()">📊 Esporta Archivio in Excel</button>
+                    <label class="btn btn-secondary" style="margin:0; cursor:pointer;">
+                        📥 Importa Archivio da Excel <input type="file" id="import-archive-file" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importArchiveFromExcel(event)">
+                    </label>
+                </div>
+            </div>
+            <div id="archive-list-container"></div>
+        </div>
+    </div>
+
+    <!-- TAB 5: PERMESSI BREVI -->
+    <div id="tab-short-leave" class="tab-content">
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2>Elenco Docenti con Permesso Breve</h2>
+                <button class="btn btn-danger" onclick="clearAllShortLeaves()">Svuota Elenco</button>
+            </div>
+            <div id="short-leave-list-container"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const APP_PASSWORD = "Corbino@25";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtBNA_aqzStT5vfWgfwmXJr9aZ78e_WPOML-GL3ta1Nne2vhY1eL-igOoRQdu1L2Ee/exec";
+
+    const DAYS_CONFIG = {
+        'Lunedì': 5, 'Martedì': 6, 'Mercoledì': 5,
+        'Giovedì': 5, 'Venerdì': 6, 'Sabato': 5
+    };
+
+    let availability = [];
+    let substitutionLog = [];
+    let archiveStorage = {};
+    let shortLeaveStorage = {};
+    let currentLoadedArchiveLogs = null;
+    let currentLayout = 'vertical';
+    let importedTeachersList = [];
+    let importedClassesList = [];
+
+    const todayDate = new Date();
+    document.getElementById('shared-date').valueAsDate = todayDate;
+    document.getElementById('report-date').valueAsDate = todayDate;
+
+    // Controllo Password
+    function checkPassword() {
+        const inputField = document.getElementById('app-password-input');
+        const input = inputField.value.trim();
+        const errorEl = document.getElementById('login-error');
+        
+        if (input === APP_PASSWORD) {
+            errorEl.style.display = 'none';
+            document.getElementById('login-overlay').style.display = 'none';
+            loadDataFromCloud();
+        } else {
+            errorEl.style.display = 'block';
+            inputField.value = '';
+            inputField.focus();
+        }
+    }
+
+    async function loadDataFromCloud() {
+        const statusEl = document.getElementById('sync-status');
+        if (SCRIPT_URL.includes("INSERISCI_QUI")) {
+            statusEl.textContent = "⚠️ URL Google Script non configurato";
+            return;
+        }
+        statusEl.textContent = "🔄 Sincronizzazione in corso...";
+        try {
+            const response = await fetch(SCRIPT_URL);
+            const data = await response.json();
+            
+            availability = (data.availability || []).map(row => ({
+                name: row[0], day: row[1], hour: row[2] === 'Tutte' ? 'Tutte' : Number(row[2])
+            }));
+
+            importedTeachersList = (data.teachers || [])
+                .map(row => Array.isArray(row) ? row[0] : row)
+                .filter(Boolean)
+                .map(v => String(v).trim());
+
+            importedClassesList = (data.classes || [])
+                .map(row => {
+                    if (!Array.isArray(row)) return String(row || '').trim();
+                    const indirizzo = String(row[0] || '').trim();
+                    const classe = String(row[1] || '').trim();
+                    return indirizzo && classe ? `${indirizzo} - ${classe}` : (classe || indirizzo);
+                })
+                .filter(Boolean);
+
+            importedTeachersList = [...new Set(importedTeachersList)];
+            importedClassesList = [...new Set(importedClassesList)];
+            updateDropdowns();
+
+            archiveStorage = {};
+            (data.archive || []).forEach(row => {
+                const date = row[0];
+                const day = row[1];
+                let logs = [];
+                try { logs = JSON.parse(row[2]); } catch(e){}
+                archiveStorage[`${date}_${day}`] = { date, day, logs };
+            });
+
+            shortLeaveStorage = {};
+            (data.shortLeaves || []).forEach(row => {
+                const key = row[0] || ('sl_' + Math.random());
+                shortLeaveStorage[key] = { 
+                    key, 
+                    name: row[1], 
+                    day: row[2], 
+                    hour: row[3], 
+                    class: row[4], 
+                    date: row[5] || '' 
+                };
+            });
+
+            statusEl.textContent = `✅ Google Fogli: ${importedTeachersList.length} docenti, ${importedClassesList.length} classi`;
+            updateAvailable();
+            updatePreviewReport();
+            renderLoadedList();
+            renderArchive();
+            renderShortLeaveList();
+        } catch (err) {
+            statusEl.textContent = "❌ Sincronizzazione fallita (Uso Locale)";
+            updateAvailable();
+            updatePreviewReport();
+        }
+    }
+
+    async function syncToCloud(action, items) {
+        if (SCRIPT_URL.includes("INSERISCI_QUI")) return;
+        const statusEl = document.getElementById('sync-status');
+        statusEl.textContent = "💾 Salvataggio su Google Sheets...";
+        try {
+            await fetch(SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: action, items: items })
+            });
+            statusEl.textContent = "✅ Sincronizzato con Google Sheets";
+        } catch(err) {
+            statusEl.textContent = "❌ Errore salvataggio";
+        }
+    }
+
+    function saveAvailabilityCloud() {
+        syncToCloud('saveAvailability', availability);
+    }
+
+    function saveArchiveCloud() {
+        const items = Object.keys(archiveStorage).map(k => ({
+            date: archiveStorage[k].date,
+            day: archiveStorage[k].day,
+            logs: archiveStorage[k].logs
+        }));
+        syncToCloud('saveArchive', items);
+    }
+
+    function saveShortLeaveCloud() {
+        const items = Object.keys(shortLeaveStorage).map(k => ({
+            key: k,
+            name: shortLeaveStorage[k].name,
+            day: shortLeaveStorage[k].day,
+            hour: shortLeaveStorage[k].hour,
+            class: shortLeaveStorage[k].class,
+            date: shortLeaveStorage[k].date || ''
+        }));
+        syncToCloud('saveShortLeaves', items);
+    }
+
+    function changePrintLayout(layout) {
+        currentLayout = layout;
+        document.getElementById('preview-layout-select').value = layout;
+        document.getElementById('report-layout-select').value = layout;
+        
+        const body = document.getElementById('page-body');
+        body.className = layout === 'matrix' ? 'print-layout-matrix' : 'print-layout-vertical';
+
+        updatePreviewReport();
+        renderReport();
+    }
+
+    function syncDates(val) {
+        document.getElementById('shared-date').value = val;
+        document.getElementById('report-date').value = val;
+    }
+
+    function formatFullDate(dayName, dateStr) {
+        if(!dateStr) {
+            const today = new Date();
+            return `${dayName}, ${today.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+        }
+        const parts = dateStr.split('-');
+        if(parts.length === 3) {
+            const d = new Date(parts[0], parts[1] - 1, parts[2]);
+            return `${dayName}, ${d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+        }
+        return dayName;
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        if(tab === 'sub') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('tab-sub').classList.add('active');
+            updateHours();
+            updateAvailable();
+            updatePreviewReport();
+        } else if(tab === 'import') {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('tab-import').classList.add('active');
+            updateManualHourCheckboxes();
+            renderLoadedList();
+        } else if(tab === 'report') {
+            document.querySelectorAll('.tab-btn')[2].classList.add('active');
+            document.getElementById('tab-report').classList.add('active');
+            renderReport();
+        } else if(tab === 'archive') {
+            document.querySelectorAll('.tab-btn')[3].classList.add('active');
+            document.getElementById('tab-archive').classList.add('active');
+            renderArchive();
+        } else if(tab === 'short-leave') {
+            document.querySelectorAll('.tab-btn')[4].classList.add('active');
+            document.getElementById('tab-short-leave').classList.add('active');
+            renderShortLeaveList();
+        }
+    }
+
+    function updateHours() {
+        const day = document.getElementById('sel-day').value;
+        const max = DAYS_CONFIG[day];
+        const hourSelect = document.getElementById('sel-hour');
+        hourSelect.innerHTML = '';
+        for(let i = 1; i <= max; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = `${i}ª Ora`;
+            hourSelect.appendChild(opt);
+        }
+    }
+
+    function updateManualHourCheckboxes() {
+        const day = document.getElementById('manual-day').value;
+        const max = DAYS_CONFIG[day];
+        const container = document.getElementById('manual-hours-container');
+        container.innerHTML = '';
+
+        for(let i = 1; i <= max; i++) {
+            container.innerHTML += `
+                <label class="checkbox-item">
+                    <input type="checkbox" value="${i}" class="m-hour-cb"> ${i}ª Ora
+                </label>
+            `;
+        }
+    }
+
+    function addManualAvailability() {
+        const nameInput = document.getElementById('manual-name');
+        const roleSelect = document.getElementById('manual-role');
+        const daySelect = document.getElementById('manual-day');
+        const editIndexInput = document.getElementById('edit-index');
+        
+        const rawName = nameInput.value.trim();
+        const role = roleSelect.value;
+        const day = daySelect.value;
+        const checkboxes = document.querySelectorAll('.m-hour-cb:checked');
+        const editIndex = parseInt(editIndexInput.value);
+
+        if(!rawName) { alert('Inserisci il nome del docente.'); return; }
+        if(checkboxes.length === 0) { alert('Seleziona almeno un’ora di disponibilità.'); return; }
+
+        const name = `${rawName} (${role})`;
+
+        if(editIndex > -1) {
+            availability.splice(editIndex, 1);
+        }
+
+        checkboxes.forEach(cb => {
+            const hour = parseInt(cb.value);
+            if(!availability.some(a => a.name === name && a.day === day && a.hour === hour)) {
+                availability.push({ name, day, hour });
+            }
+        });
+
+        saveAvailabilityCloud();
+        resetForm();
+        renderLoadedList();
+        alert('Disponibilità salvata nel cloud!');
+    }
+
+    function editAvailability(index) {
+        const item = availability[index];
+        if(!item) return;
+
+        let cleanName = item.name;
+        let role = 'Disp.';
+        const match = item.name.match(/^(.*?)\s*\(([^)]+)\)$/);
+        if(match) {
+            cleanName = match[1].trim();
+            role = match[2].trim();
+        }
+
+        document.getElementById('manual-name').value = cleanName;
+        document.getElementById('manual-role').value = role;
+        document.getElementById('manual-day').value = item.day === 'Tutti' ? 'Lunedì' : item.day;
+        
+        updateManualHourCheckboxes();
+
+        document.querySelectorAll('.m-hour-cb').forEach(cb => {
+            if(item.day === 'Tutti' || parseInt(cb.value) === item.hour) cb.checked = true;
+        });
+
+        document.getElementById('edit-index').value = index;
+        document.getElementById('form-title').textContent = 'Modifica Disponibilità';
+        document.getElementById('save-btn').textContent = 'Salva Modifiche';
+        document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+        document.getElementById('manual-name').value = '';
+        document.getElementById('manual-role').value = 'Disp.';
+        document.getElementById('manual-day').value = 'Lunedì';
+        updateManualHourCheckboxes();
+        document.getElementById('edit-index').value = -1;
+        document.getElementById('form-title').textContent = 'Inserisci Docente a Disposizione (Manuale)';
+        document.getElementById('save-btn').textContent = '+ Aggiungi Disponibilità';
+        document.getElementById('cancel-edit-btn').style.display = 'none';
+    }
+
+    function removeAvailability(index) {
+        availability.splice(index, 1);
+        saveAvailabilityCloud();
+        renderLoadedList();
+    }
+
+    function clearAllAvailability() {
+        if(confirm('Sei sicuro di svuotare tutte le disponibilità?')) {
+            availability = [];
+            saveAvailabilityCloud();
+            renderLoadedList();
+            resetForm();
+        }
+    }
+
+    function normalizeDay(dayStr) {
+        if(!dayStr) return '';
+        const d = dayStr.toString().trim().toLowerCase();
+        if(d.includes('lun')) return 'Lunedì';
+        if(d.includes('mar')) return 'Martedì';
+        if(d.includes('mer')) return 'Mercoledì';
+        if(d.includes('gio')) return 'Giovedì';
+        if(d.includes('ven')) return 'Venerdì';
+        if(d.includes('sab')) return 'Sabato';
+        return dayStr;
+    }
+
+    function importExcel(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                let addedCount = 0;
+                jsonData.forEach(row => {
+                    const name = row['Nome'] || row['NOME'] || row['Docente'] || row['docente'];
+                    const dayRaw = row['Giorno'] || row['GIORNO'] || row['giorno'];
+                    const hourRaw = row['Ora'] || row['ORA'] || row['ora'];
+
+                    const day = normalizeDay(dayRaw);
+                    const hour = parseInt(hourRaw);
+
+                    if(name && day && !isNaN(hour)) {
+                        if(!availability.some(a => a.name === name && a.day === day && a.hour === hour)) {
+                            availability.push({ name: name.toString().trim(), day, hour });
+                            addedCount++;
+                        }
+                    }
+                });
+
+                saveAvailabilityCloud();
+                alert(`Importazione completata! Aggiunte ${addedCount} disponibilità nel cloud.`);
+                renderLoadedList();
+                e.target.value = '';
+            } catch(err) {
+                alert('Errore nella lettura del file Excel.');
+                e.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function updateDropdowns() {
+        const teacherSelect = document.getElementById('absent-teacher');
+        const classSelect = document.getElementById('absent-class');
+
+        const currentTeacher = teacherSelect.value;
+        const currentClass = classSelect.value;
+
+        teacherSelect.innerHTML = '<option value="">-- Seleziona Docente --</option>';
+        importedTeachersList.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.textContent = t;
+            teacherSelect.appendChild(opt);
+        });
+        if(currentTeacher) teacherSelect.value = currentTeacher;
+
+        classSelect.innerHTML = '<option value="">-- Seleziona Classe --</option>';
+        importedClassesList.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            classSelect.appendChild(opt);
+        });
+        if(currentClass) classSelect.value = currentClass;
+    }
+
+    function addManualTeacherToList() {
+        const input = document.getElementById('manual-absent-name');
+        const val = input.value.trim();
+        if(!val) { alert('Inserisci il nome del docente.'); return; }
+        
+        if(!importedTeachersList.includes(val)) {
+            importedTeachersList.push(val);
+            updateDropdowns();
+            alert(`Docente "${val}" aggiunto con successo all'elenco!`);
+            input.value = '';
+        } else {
+            alert('Questo docente è già presente nell\'elenco.');
+        }
+    }
+
+    function addManualClassToList() {
+        const input = document.getElementById('manual-class-name');
+        const val = input.value.trim();
+        if(!val) { alert('Inserisci la classe.'); return; }
+        
+        if(!importedClassesList.includes(val)) {
+            importedClassesList.push(val);
+            updateDropdowns();
+            alert(`Classe "${val}" aggiunta con successo all'elenco!`);
+            input.value = '';
+        } else {
+            alert('Questa classe è già presente nell\'elenco.');
+        }
+    }
+
+    function importTab1Teachers(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                let tList = [];
+                jsonData.forEach(row => {
+                    const name = row['Nome'] || row['NOME'] || row['Docente'] || row['docente'] || Object.values(row)[0];
+                    if(name) tList.push(name.toString().trim());
+                });
+
+                importedTeachersList = Array.from(new Set([...importedTeachersList, ...tList]));
+                updateDropdowns();
+                document.getElementById('tab1-import-status').textContent = `✅ Elenco docenti aggiornato (${importedTeachersList.length} elementi).`;
+                e.target.value = '';
+            } catch(err) {
+                alert('Errore nella lettura del file docenti.');
+                e.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function importTab1Classes(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                let cList = [];
+                jsonData.forEach(row => {
+                    let indirizzo = '';
+                    let classe = '';
+
+                    Object.keys(row).forEach(k => {
+                        const kL = k.toLowerCase();
+                        if (kL.includes('indirizzo') || kL.includes('specializzazione') || kL.includes('corso') || kL.includes('sezione')) {
+                            indirizzo = row[k] ? row[k].toString().trim() : '';
+                        }
+                        if (kL.includes('classe') || kL.includes('class') || kL.includes('aule')) {
+                            classe = row[k] ? row[k].toString().trim() : '';
+                        }
+                    });
+
+                    let combined = '';
+                    if (indirizzo && classe) {
+                        combined = `${indirizzo} - ${classe}`;
+                    } else if (classe) {
+                        combined = classe;
+                    } else {
+                        const val = Object.values(row)[0];
+                        if(val) combined = val.toString().trim();
+                    }
+
+                    if(combined) cList.push(combined);
+                });
+
+                importedClassesList = Array.from(new Set([...importedClassesList, ...cList]));
+                updateDropdowns();
+                document.getElementById('tab1-import-status').textContent = `✅ Elenco classi aggiornato (${importedClassesList.length} elementi).`;
+                e.target.value = '';
+            } catch(err) {
+                alert('Errore nella lettura del file classi.');
+                e.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function clearTab1Lists() {
+        if(confirm('Vuoi svuotare gli elenchi caricati di docenti e classi?')) {
+            importedTeachersList = [];
+            importedClassesList = [];
+            updateDropdowns();
+            document.getElementById('tab1-import-status').textContent = '⚠️ Elenchi svuotati.';
+            document.getElementById('tab1-file-teachers').value = '';
+            document.getElementById('tab1-file-classes').value = '';
+        }
+    }
+
+    function updateAvailable() {
+        const day = document.getElementById('sel-day').value;
+        const hour = parseInt(document.getElementById('sel-hour').value) || 1;
+        const container = document.getElementById('avail-container');
+
+        let activeLogs = currentLoadedArchiveLogs || substitutionLog;
+        const assignedTeachers = activeLogs
+            .filter(s => s.day === day && s.hour === hour)
+            .map(s => s.substitute);
+
+        const available = availability.filter(a => 
+            ((a.day === day && a.hour === hour) || (a.day === 'Tutti' && a.hour === 'Tutte')) && 
+            !assignedTeachers.includes(a.name)
+        );
+
+        if(available.length === 0) {
+            container.innerHTML = `<p class="empty-text">Nessun docente a disposizione per il ${day} alla ${hour}ª ora.</p>`;
+            return;
+        }
+
+        let html = '<table><thead><tr><th>Docente Disponibile</th><th>Azione</th></tr></thead><tbody>';
+        available.forEach(a => {
+            html += `
+                <tr>
+                    <td><strong>${a.name}</strong></td>
+                    <td><button class="btn btn-success" onclick="assignSub('${a.name}')">Assegna Sostituzione</button></td>
+                </tr>
+            `;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function assignSub(subName) {
+        const day = document.getElementById('sel-day').value;
+        const hour = parseInt(document.getElementById('sel-hour').value);
+        const dateVal = document.getElementById('shared-date').value;
+        
+        const absentSelect = document.getElementById('absent-teacher');
+        const classSelect = document.getElementById('absent-class');
+        const manualAbsentInput = document.getElementById('manual-absent-name');
+        const manualClassInput = document.getElementById('manual-class-name');
+        const shortLeaveCheckbox = document.getElementById('short-leave-checkbox');
+        
+        const absentName = manualAbsentInput.value.trim() ? manualAbsentInput.value.trim() : absentSelect.value.trim();
+        const className = manualClassInput.value.trim() ? manualClassInput.value.trim() : classSelect.value.trim();
+        const isShortLeave = shortLeaveCheckbox.checked;
+
+        if(!absentName) {
+            alert('Seleziona o inserisci manualmente il Docente Assente.');
+            if(manualAbsentInput.value.trim() === '') absentSelect.focus();
+            return;
+        }
+
+        if (!currentLoadedArchiveLogs) currentLoadedArchiveLogs = [...substitutionLog];
+
+        // Rimuove eventuale voce esistente per la stessa ora e stesso docente assente per evitare duplicati
+        currentLoadedArchiveLogs = currentLoadedArchiveLogs.filter(s => !(s.day === day && s.hour === hour && s.absent === absentName));
+        
+        const subId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        currentLoadedArchiveLogs.push({ id: subId, day, hour, absent: absentName, class: className, substitute: subName });
+        
+        if (isShortLeave) {
+            const uniqueKey = `${absentName}_${day}_${hour}_${dateVal}_${Date.now()}`;
+            shortLeaveStorage[uniqueKey] = { key: uniqueKey, name: absentName, day: day, hour: hour, class: className, date: dateVal };
+            saveShortLeaveCloud();
+        }
+
+        Object.keys(shortLeaveStorage).forEach(k => {
+            if (shortLeaveStorage[k].name.toLowerCase() === subName.toLowerCase()) {
+                delete shortLeaveStorage[k];
+            }
+        });
+        saveShortLeaveCloud();
+
+        absentSelect.value = '';
+        classSelect.value = '';
+        manualAbsentInput.value = '';
+        manualClassInput.value = '';
+        shortLeaveCheckbox.checked = false;
+        document.getElementById('manual-substitute').value = '';
+        
+        updateAvailable();
+        updatePreviewReport();
+    }
+
+    function assignManualSub() {
+        const manualSubInput = document.getElementById('manual-substitute');
+        const subName = manualSubInput.value.trim();
+        if(!subName) { alert('Inserisci il nome del docente sostituto.'); manualSubInput.focus(); return; }
+        assignSub(subName);
+    }
+
+    function editSubstitution(id) {
+        switchTab('sub');
+        let activeLogs = currentLoadedArchiveLogs || substitutionLog;
+        const entry = activeLogs.find(s => s.id === id);
+
+        if (!entry) return;
+
+        document.getElementById('sel-day').value = entry.day;
+        updateHours();
+        document.getElementById('sel-hour').value = entry.hour;
+        
+        const absentSelect = document.getElementById('absent-teacher');
+        const manualAbsentInput = document.getElementById('manual-absent-name');
+        const classSelect = document.getElementById('absent-class');
+
+        absentSelect.value = entry.absent;
+        if (!absentSelect.value && manualAbsentInput) {
+            manualAbsentInput.value = entry.absent;
+        }
+        classSelect.value = entry.class || '';
+
+        updateAvailable();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function removeSubstitution(id) {
+        if(confirm('Vuoi rimuovere questa sostituzione?')) {
+            if (!currentLoadedArchiveLogs) currentLoadedArchiveLogs = [...substitutionLog];
+            currentLoadedArchiveLogs = currentLoadedArchiveLogs.filter(s => s.id !== id);
+            updateAvailable();
+            updatePreviewReport();
+            renderReport();
+        }
+    }
+
+    function generateTableHTML(logs, day, isMatrix) {
+        logs.sort((a, b) => a.hour - b.hour);
+        const maxHours = DAYS_CONFIG[day] || 6;
+
+        const uniqueAbsentList = [...new Set(logs.map(s => s.absent))].filter(Boolean).sort();
+        const absentHeaderLineText = uniqueAbsentList.length > 0 ? `<strong>Docenti assenti:</strong> ${uniqueAbsentList.join(', ')}` : '';
+
+        const prevHeaderLine = document.getElementById('preview-absent-header-line');
+        const repHeaderLine = document.getElementById('print-absent-header-line');
+        if(prevHeaderLine) prevHeaderLine.innerHTML = absentHeaderLineText;
+        if(repHeaderLine) repHeaderLine.innerHTML = absentHeaderLineText;
+
+        if (isMatrix) {
+            let absentMap = {};
+            logs.forEach(s => {
+                if(!absentMap[s.absent]) absentMap[s.absent] = { class: s.class || '', hours: {} };
+                absentMap[s.absent].hours[s.hour] = { sub: s.substitute, id: s.id };
+            });
+
+            const absentNames = Object.keys(absentMap);
+            if(absentNames.length === 0) return '<p class="empty-text">Nessuna sostituzione assegnata.</p>';
+
+            let html = '<table class="matrix-table"><thead><tr><th style="width: 25%;">Docente Assente</th><th style="width: 15%;">Indirizzo e Classe</th>';
+            for(let h = 1; h <= maxHours; h++) html += `<th>${h}ª</th>`;
+            html += '<th class="no-print" style="width: 14%;">Azioni</th></tr></thead><tbody>';
+
+            absentNames.forEach(absent => {
+                const item = absentMap[absent];
+                html += `<tr><td><strong>${absent}</strong></td><td>${item.class}</td>`;
+                for(let h = 1; h <= maxHours; h++) {
+                    const cellData = item.hours[h];
+                    html += `<td>${cellData ? cellData.sub : ''}</td>`;
+                }
+                const firstHourEntry = Object.values(item.hours)[0];
+                const actionId = firstHourEntry ? firstHourEntry.id : '';
+                html += `<td class="no-print" style="display:flex; gap:4px; justify-content:center; align-items:center; border:none; padding-top:12px;">
+                    ${actionId ? `<button class="btn btn-warning" style="padding:2px 6px; font-size:0.75rem;" onclick="editSubstitution('${actionId}')">Modifica</button>
+                    <button class="btn btn-danger" style="padding:2px 6px; font-size:0.75rem;" onclick="removeSubByAbsentGroup('${day}', '${absent}')">Elimina</button>` : ''}
+                </td></tr>`;
+            });
+            html += '</tbody></table>';
+            return html;
+        } else {
+            if(logs.length === 0) return '<p class="empty-text">Nessuna sostituzione assegnata.</p>';
+
+            let html = '<table class="report-table"><thead><tr><th>Ora</th><th>Docente Assente</th><th>Indirizzo e Classe</th><th>Sostituito Da</th><th>Firma</th><th class="no-print" style="width: 14%;">Azioni</th></tr></thead><tbody>';
+            logs.forEach(s => {
+                html += `
+                    <tr>
+                        <td><strong>${s.hour}ª Ora</strong></td>
+                        <td>${s.absent}</td>
+                        <td>${s.class || '-'}</td>
+                        <td><strong>${s.substitute}</strong></td>
+                        <td></td>
+                        <td class="no-print">
+                            <div style="display:flex; gap:4px;">
+                                <button class="btn btn-warning" style="padding:4px 8px; font-size:0.8rem;" onclick="editSubstitution('${s.id}')">Modifica</button>
+                                <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="removeSubstitution('${s.id}')">Elimina</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+    }
+
+    function removeSubByAbsentGroup(day, absentName) {
+        if(confirm(`Rimuovere tutte le ore per "${absentName}"?`)) {
+            if (!currentLoadedArchiveLogs) currentLoadedArchiveLogs = [...substitutionLog];
+            currentLoadedArchiveLogs = currentLoadedArchiveLogs.filter(s => !(s.day === day && s.absent === absentName));
+            updateAvailable();
+            updatePreviewReport();
+            renderReport();
+        }
+    }
+
+    function updatePreviewReport() {
+        const day = document.getElementById('sel-day').value;
+        const dateVal = document.getElementById('shared-date').value;
+        document.getElementById('preview-day-label').textContent = formatFullDate(day, dateVal);
+
+        let activeLogs = currentLoadedArchiveLogs || substitutionLog;
+        const currentLog = activeLogs.filter(s => s.day === day);
+        document.getElementById('preview-container-dynamic').innerHTML = generateTableHTML(currentLog, day, currentLayout === 'matrix');
+    }
+
+    function renderLoadedList() {
+        const container = document.getElementById('loaded-teachers-list');
+        document.getElementById('total-avail-count').textContent = availability.length;
+
+        if(availability.length === 0) {
+            container.innerHTML = '<p class="empty-text">Nessuna disponibilità nel cloud.</p>';
+            return;
+        }
+
+        let html = '<table><thead><tr><th>Docente</th><th>Giorno</th><th>Ora</th><th>Azioni</th></tr></thead><tbody>';
+        availability.forEach((a, index) => {
+            html += `
+                <tr>
+                    <td>${a.name}</td>
+                    <td>${a.day === 'Tutti' ? 'Tutti i giorni' : a.day}</td>
+                    <td>${a.hour === 'Tutte' ? 'Tutte le ore' : a.hour + 'ª Ora'}</td>
+                    <td style="display: flex; gap: 6px;">
+                        <button class="btn btn-warning" onclick="editAvailability(${index})">Modifica</button>
+                        <button class="btn btn-danger" onclick="removeAvailability(${index})">Elimina</button>
+                    </td>
+                </tr>
+            `;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function renderReport() {
+        const dateVal = document.getElementById('report-date').value;
+        const currentSelDay = document.getElementById('sel-day').value;
+        
+        const dateLabel = document.getElementById('print-day-date-label');
+        if(dateLabel) {
+            dateLabel.textContent = formatFullDate(currentSelDay, dateVal);
+        }
+
+        let reportLogs = [];
+        const archiveKey = `${dateVal}_${currentSelDay}`;
+        
+        if (archiveStorage[archiveKey]) {
+            reportLogs = archiveStorage[archiveKey].logs;
+        } else if (currentLoadedArchiveLogs) {
+            reportLogs = currentLoadedArchiveLogs;
+        } else {
+            reportLogs = substitutionLog.filter(s => s.day === currentSelDay);
+        }
+
+        const container = document.getElementById('report-container-dynamic');
+        if(container) {
+            container.innerHTML = generateTableHTML(reportLogs, currentSelDay, currentLayout === 'matrix');
+        }
+    }
+
+    function archiveCurrentReport() {
+        const day = document.getElementById('sel-day').value;
+        const dateVal = document.getElementById('report-date').value;
+        
+        if(!dateVal) { 
+            alert('Seleziona una data valida prima di salvare.'); 
+            return; 
+        }
+
+        let activeLogs = currentLoadedArchiveLogs || substitutionLog;
+        const currentLog = activeLogs.filter(s => s.day === day);
+        
+        if(currentLog.length === 0) { 
+            alert('Nessuna sostituzione da salvare.'); 
+            return; 
+        }
+
+        // Assicura che ogni log abbia un ID prima dell'archiviazione
+        currentLog.forEach(l => { if(!l.id) l.id = 'sub_' + Math.random().toString(36).substr(2, 9); });
+
+        const archiveKey = `${dateVal}_${day}`;
+        archiveStorage[archiveKey] = { date: dateVal, day: day, logs: [...currentLog] };
+
+        try {
+            saveArchiveCloud();
+            alert('Report salvato con successo nel cloud!');
+            renderArchive();
+        } catch(err) {
+            console.error("Errore durante il salvataggio nell'archivio:", err);
+            alert("Errore durante il salvataggio.");
+        }
+    }
+
+    function renderArchive() {
+        const container = document.getElementById('archive-list-container');
+        const keys = Object.keys(archiveStorage).sort().reverse();
+
+        if(keys.length === 0) {
+            container.innerHTML = '<p class="empty-text">Nessun report in archivio.</p>';
+            return;
+        }
+
+        let html = '<table><thead><tr><th>Data</th><th>Giorno</th><th>Sostituzioni</th><th>Azioni</th></tr></thead><tbody>';
+        keys.forEach(key => {
+            const item = archiveStorage[key];
+            html += `
+                <tr>
+                    <td><strong>${item.date}</strong></td>
+                    <td>${item.day}</td>
+                    <td>${item.logs.length} sostituzioni</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding:4px 8px;" onclick="loadArchivedReport('${key}')">👁 Apri</button>
+                        <button class="btn btn-danger" onclick="deleteArchiveItem('${key}')">Elimina</button>
+                    </td>
+                </tr>
+            `;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function loadArchivedReport(key) {
+        const item = archiveStorage[key];
+        if(!item || !item.logs) return;
+
+        document.getElementById('sel-day').value = item.day;
+        updateHours();
+        document.getElementById('shared-date').value = item.date;
+        document.getElementById('report-date').value = item.date;
+
+        const firstHour = item.logs.reduce((min, l) => l.hour < min ? l.hour : min, item.logs[0].hour);
+        document.getElementById('sel-hour').value = firstHour;
+
+        currentLoadedArchiveLogs = item.logs.map(log => ({ ...log, id: log.id || ('sub_' + Math.random().toString(36).substr(2, 9)), day: log.day || item.day }));
+
+        updateAvailable();
+        updatePreviewReport();
+        renderReport();
+        switchTab('sub');
+    }
+
+    function deleteArchiveItem(key) {
+        if(confirm('Eliminare questo report dall’archivio cloud?')) {
+            delete archiveStorage[key];
+            saveArchiveCloud();
+            renderArchive();
+        }
+    }
+
+    function exportArchiveToExcel() {
+        const keys = Object.keys(archiveStorage);
+        if (keys.length === 0) {
+            alert('Nessun dato in archivio da esportare.');
+            return;
+        }
+        let exportRows = [];
+        keys.forEach(key => {
+            const item = archiveStorage[key];
+            item.logs.forEach(l => {
+                exportRows.push({
+                    'Data': item.date,
+                    'Giorno': item.day,
+                    'Ora': l.hour,
+                    'Docente Assente': l.absent,
+                    'Classe': l.class || '',
+                    'Sostituto': l.substitute
+                });
+            });
+        });
+        const ws = XLSX.utils.json_to_sheet(exportRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Archivio_Sostituzioni");
+        XLSX.writeFile(wb, "Archivio_Sostituzioni_Corbino.xlsx");
+    }
+
+    function importArchiveFromExcel(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                let count = 0;
+                jsonData.forEach(row => {
+                    const date = row['Data'] || row['DATA'] || '';
+                    const day = row['Giorno'] || row['GIORNO'] || '';
+                    const hour = parseInt(row['Ora'] || row['ORA']);
+                    const absent = row['Docente Assente'] || row['DOCENTE ASSENTE'] || row['Absent'] || '';
+                    const cls = row['Classe'] || row['CLASSE'] || '';
+                    const substitute = row['Sostituto'] || row['SOSTITUTO'] || '';
+
+                    if(date && day && absent && substitute && !isNaN(hour)) {
+                        const key = `${date}_${day}`;
+                        if(!archiveStorage[key]) archiveStorage[key] = { date, day, logs: [] };
+                        const subId = 'sub_' + Math.random().toString(36).substr(2, 9);
+                        archiveStorage[key].logs.push({ id: subId, day, hour, absent, class: cls, substitute });
+                        count++;
+                    }
+                });
+
+                saveArchiveCloud();
+                renderArchive();
+                alert(`Importazione completata! Aggiunte ${count} voci all'archivio.`);
+                e.target.value = '';
+            } catch(err) {
+                alert('Errore nella lettura del file archivio Excel.');
+                e.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function renderShortLeaveList() {
+        const container = document.getElementById('short-leave-list-container');
+        const keys = Object.keys(shortLeaveStorage);
+
+        if(keys.length === 0) {
+            container.innerHTML = '<p class="empty-text">Nessun permesso breve registrato.</p>';
+            return;
+        }
+
+        let html = '<table><thead><tr><th>Data Permesso</th><th>Docente</th><th>Giorno</th><th>Ora</th><th>Classe</th><th>Azioni</th></tr></thead><tbody>';
+        keys.forEach(key => {
+            const item = shortLeaveStorage[key];
+            html += `
+                <tr>
+                    <td><strong>${item.date || '-'}</strong></td>
+                    <td><strong>${item.name}</strong></td>
+                    <td>${item.day}</td>
+                    <td>${item.hour}ª Ora</td>
+                    <td>${item.class || '-'}</td>
+                    <td>
+                        <button class="btn btn-success" style="padding:4px 8px;" onclick="loadShortLeaveToAvailability('${key}')">Carica in Scheda 2</button>
+                        <button class="btn btn-danger" style="padding:4px 8px;" onclick="deleteShortLeaveItem('${key}')">Elimina</button>
+                    </td>
+                </tr>
+            `;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function loadShortLeaveToAvailability(key) {
+        const item = shortLeaveStorage[key];
+        if(!item) return;
+
+        const formattedName = `${item.name} (Permesso Breve)`;
+        
+        if(!availability.some(a => a.name === formattedName && a.day === item.day && a.hour === item.hour)) {
+            availability.push({ name: formattedName, day: item.day, hour: item.hour });
+            saveAvailabilityCloud();
+        }
+
+        delete shortLeaveStorage[key];
+        saveShortLeaveCloud();
+        renderShortLeaveList();
+        alert(`Il docente ${item.name} è ora disponibile per il giorno ${item.day} alla ${item.hour}ª ora.`);
+    }
+
+    function deleteShortLeaveItem(key) {
+        if(confirm('Rimuovere questo permesso breve?')) {
+            delete shortLeaveStorage[key];
+            saveShortLeaveCloud();
+            renderShortLeaveList();
+        }
+    }
+
+    function clearAllShortLeaves() {
+        if(confirm('Svuotare l’elenco dei permessi brevi?')) {
+            shortLeaveStorage = {};
+            saveShortLeaveCloud();
+            renderShortLeaveList();
+        }
+    }
+
+    // Inizializzazione interfaccia
+    updateHours();
+    updateManualHourCheckboxes();
+</script>
+
+</body>
+</html>
